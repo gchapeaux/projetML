@@ -14,7 +14,7 @@ import torchvision.models as models
 import torch.nn.functional as F
 import math
 import copy
-cuda = True
+cuda = False
 device = torch.device("cuda" if cuda else "cpu")
 
 unloader = transforms.ToPILImage()  # reconvert into PIL image
@@ -73,9 +73,9 @@ class StyleLoss(nn.Module):
         return x
 
 class LossNet (nn.Module):
-    def __init__(self, children_list, content_layers, style_layers, style_img, content_img, 
-                 style_weight=1000000, content_weight=10,                          
-                 normalization_mean = cnn_normalization_mean, 
+    def __init__(self, children_list, content_layers, style_layers, style_img, content_img,
+                 style_weight=1000000, content_weight=10,
+                 normalization_mean = cnn_normalization_mean,
                  normalization_std = cnn_normalization_std,
                 StyleLoss = StyleLoss,
                 ContentLoss = ContentLoss):
@@ -101,13 +101,13 @@ class LossNet (nn.Module):
                 name = 'pool_{}'.format(i)
             elif isinstance(layer, nn.BatchNorm2d):
                 name = 'bn_{}'.format(i)
-                
+
             if i > imax:
                 break
-                
+
             self.vgg.add_module(name, layer)
-            
-            
+
+
             if name in content_layers:
                 # add content loss:
                 target = self.vgg(content_img).detach()
@@ -121,20 +121,20 @@ class LossNet (nn.Module):
                 style_loss = StyleLoss(target_feature)
                 self.vgg.add_module("style_loss_{}".format(i), style_loss)
                 self.style_losses.append(style_loss)
-                
-            
+
+
     def forward(self, x):
         self.vgg(x)
-            
+
         content_loss = 0
         style_loss = 0
         for content in self.content_losses:
             content_loss += content.loss
-            
+
         for style in self.style_losses:
             style_loss += style.loss
-            
-            
+
+
         self.style_score = style_loss * self.style_weight
         self.content_score = content_loss * self.content_weight
         loss = self.style_score + self.content_score
@@ -149,7 +149,7 @@ class Residual (nn.Module):
         self.batchNorm2 = nn.BatchNorm2d(128)
         self.ReLU = F.relu
         self.padding = padding
-        
+
     def forward(self, x):
         y = self.ReLU(self.batchNorm1(self.couche1(x)))
         y = self.batchNorm2(self.couche2(y))
@@ -221,28 +221,92 @@ class ImgTNet (nn.Module):
         if verbose:
             print(out.shape)
         return out
-        
 
-def run_style_transfer(cnn, style_img, content_img, input_img,                               
-                       normalization_mean = cnn_normalization_mean, 
+class ImgTNet_v2 (nn.Module):
+    def __init__(self):
+        super(ImgTNet_v2, self).__init__()
+        self.reflectionPadding = torch.nn.ReflectionPad2d(40)
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=9, stride=1, padding=4)
+        self.instanceNorm1 = nn.InstanceNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1)
+        self.instanceNorm2 = nn.InstanceNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1)
+        self.instanceNorm3 = nn.InstanceNorm2d(128)
+        self.residual1 = Residual(False)
+        self.residual2 = Residual(False)
+        self.residual3 = Residual(False)
+        self.residual4 = Residual(False)
+        self.residual5 = Residual(False)
+        self.conv4 = nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding = 1, output_padding = 1)
+        self.instanceNorm4 = nn.InstanceNorm2d(64)
+        self.conv5 = nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding = 1, output_padding = 1)
+        self.instanceNorm5 = nn.InstanceNorm2d(32)
+        self.conv6 = nn.ConvTranspose2d(32, 3, kernel_size=9, stride=1, padding = 4)
+        self.instanceNorm6 = nn.InstanceNorm2d(3)
+        self.ReLU = F.relu
+        self.STanh = lambda x : 255/2*(1+nn.Tanh()(x))
+
+    def forward(self, x):
+        verbose = False
+        out = self.reflectionPadding(x)
+        if verbose:
+            print(out.shape)
+        out = self.ReLU(self.instanceNorm1(self.conv1(out)))
+        if verbose:
+            print(out.shape)
+        out = self.ReLU(self.instanceNorm2(self.conv2(out)))
+        if verbose:
+            print(out.shape)
+        out = self.ReLU(self.instanceNorm3(self.conv3(out)))
+        if verbose:
+            print(out.shape)
+        out = self.residual1.forward(out)
+        if verbose:
+            print(out.shape)
+        out = self.residual2.forward(out)
+        if verbose:
+            print(out.shape)
+        out = self.residual3.forward(out)
+        if verbose:
+            print(out.shape)
+        out = self.residual4.forward(out)
+        if verbose:
+            print(out.shape)
+        out = self.residual5.forward(out)
+        if verbose:
+            print(out.shape)
+        out = self.ReLU(self.instanceNorm4(self.conv4(out)))
+        if verbose:
+            print(out.shape)
+        out = self.ReLU(self.instanceNorm5(self.conv5(out)))
+        if verbose:
+            print(out.shape)
+        out = self.STanh(self.instanceNorm6(self.conv6(out)))
+        if verbose:
+            print(out.shape)
+        return out
+
+
+def run_style_transfer(cnn,network, style_img, content_img, input_img,
+                       normalization_mean = cnn_normalization_mean,
                        normalization_std =cnn_normalization_std,
                        num_steps=300,
-                       style_weight=1000000, 
+                       style_weight=1000000,
                        content_weight=10, step = 50, save = False, show = False,
                        content_layers=content_layers_default,
                        style_layers=style_layers_default):
     """Run the style transfer."""
     print('Building the style transfer model..')
-    model = LossNet(cnn.children(), content_layers, style_layers, style_img, content_img, 
-                 style_weight = style_weight, content_weight = content_weight,                          
-                 normalization_mean = normalization_mean, 
+    model = network(cnn.children(), content_layers, style_layers, style_img, content_img,
+                 style_weight = style_weight, content_weight = content_weight,
+                 normalization_mean = normalization_mean,
                  normalization_std = normalization_std)
-    
+
     optimizer =  optim.LBFGS([input_img.requires_grad_()])
     if save :
         tensorToPil(content_img).save("output/content_input.jpg")
         tensorToPil(style_img).save("output/style_input.jpg")
-        
+
     print('Optimizing..')
     global iteration
     iteration = 0
@@ -256,7 +320,7 @@ def run_style_transfer(cnn, style_img, content_img, input_img,
 
             optimizer.zero_grad()
             loss = model(input_img)
-            
+
             loss.backward()
             iteration += 1
             if iteration % step == 0:
@@ -268,15 +332,15 @@ def run_style_transfer(cnn, style_img, content_img, input_img,
                 if save:
                     tensorToPil(input_img).save("output/output_"+str(iteration // step)+".jpg")
                 print()
-                
+
             return loss
-        
+
         optimizer.step(closure)
 
     input_img.data.clamp_(0, 1)
     if save:
         tensorToPil(input_img).save("output/output_final.jpg")
-        
+
 
     return input_img
 
@@ -302,9 +366,25 @@ content_image = image_loader(content_path)
 input_image = content_image.clone()
 #TODO : Uncomment
 #cnn = models.vgg19(pretrained=True).features.to(device).eval()
-#output = run_style_transfer(cnn, style_image, content_image, input_image, num_steps= 150, step = 50, save = True)
+#output = run_style_transfer(cnn,LossNet, style_image, content_image, input_image, num_steps= 150, step = 50, save = True)
 
-reseau = ImgTNet().cuda()
-image = reseau(input_image)
-print(image.shape)
-tensorToPil(image)
+def Output(network):
+  if cuda :
+    reseau = network().cuda()
+  else :
+    reseau = network().cpu()
+
+  image = reseau(input_image)
+  print(image.shape)
+  tensorToPil(image)
+  imshow(network().forward(content_image))
+
+#Test method Johnson
+Output(ImgTNet)
+
+#Better version
+Output(ImgTNet_v2)
+
+
+
+
