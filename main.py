@@ -222,8 +222,72 @@ class ImgTNet (nn.Module):
             print(out.shape)
         return out
 
+class ImgTNet_v2 (nn.Module):
+    def __init__(self):
+        super(ImgTNet_v2, self).__init__()
+        self.reflectionPadding = torch.nn.ReflectionPad2d(40)
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=9, stride=1, padding=4)
+        self.instanceNorm1 = nn.InstanceNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1)
+        self.instanceNorm2 = nn.InstanceNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1)
+        self.instanceNorm3 = nn.InstanceNorm2d(128)
+        self.residual1 = Residual(False)
+        self.residual2 = Residual(False)
+        self.residual3 = Residual(False)
+        self.residual4 = Residual(False)
+        self.residual5 = Residual(False)
+        self.conv4 = nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding = 1, output_padding = 1)
+        self.instanceNorm4 = nn.InstanceNorm2d(64)
+        self.conv5 = nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding = 1, output_padding = 1)
+        self.instanceNorm5 = nn.InstanceNorm2d(32)
+        self.conv6 = nn.ConvTranspose2d(32, 3, kernel_size=9, stride=1, padding = 4)
+        self.instanceNorm6 = nn.InstanceNorm2d(3)
+        self.ReLU = F.relu
+        self.STanh = lambda x : 255/2*(1+nn.Tanh()(x))
 
-def run_style_transfer(cnn, style_img, content_img, input_img,
+    def forward(self, x):
+        verbose = False
+        out = self.reflectionPadding(x)
+        if verbose:
+            print(out.shape)
+        out = self.ReLU(self.instanceNorm1(self.conv1(out)))
+        if verbose:
+            print(out.shape)
+        out = self.ReLU(self.instanceNorm2(self.conv2(out)))
+        if verbose:
+            print(out.shape)
+        out = self.ReLU(self.instanceNorm3(self.conv3(out)))
+        if verbose:
+            print(out.shape)
+        out = self.residual1.forward(out)
+        if verbose:
+            print(out.shape)
+        out = self.residual2.forward(out)
+        if verbose:
+            print(out.shape)
+        out = self.residual3.forward(out)
+        if verbose:
+            print(out.shape)
+        out = self.residual4.forward(out)
+        if verbose:
+            print(out.shape)
+        out = self.residual5.forward(out)
+        if verbose:
+            print(out.shape)
+        out = self.ReLU(self.instanceNorm4(self.conv4(out)))
+        if verbose:
+            print(out.shape)
+        out = self.ReLU(self.instanceNorm5(self.conv5(out)))
+        if verbose:
+            print(out.shape)
+        out = self.STanh(self.instanceNorm6(self.conv6(out)))
+        if verbose:
+            print(out.shape)
+        return out
+
+
+def run_style_transfer(cnn,network, style_img, content_img, input_img,
                        normalization_mean = cnn_normalization_mean,
                        normalization_std =cnn_normalization_std,
                        num_steps=300,
@@ -233,7 +297,7 @@ def run_style_transfer(cnn, style_img, content_img, input_img,
                        style_layers=style_layers_default):
     """Run the style transfer."""
     print('Building the style transfer model..')
-    model = LossNet(cnn.children(), content_layers, style_layers, style_img, content_img,
+    model = network(cnn.children(), content_layers, style_layers, style_img, content_img,
                  style_weight = style_weight, content_weight = content_weight,
                  normalization_mean = normalization_mean,
                  normalization_std = normalization_std)
@@ -302,12 +366,25 @@ content_image = image_loader(content_path)
 input_image = content_image.clone()
 #TODO : Uncomment
 #cnn = models.vgg19(pretrained=True).features.to(device).eval()
-#output = run_style_transfer(cnn, style_image, content_image, input_image, num_steps= 150, step = 50, save = True)
-if cuda :
-  reseau = ImgTNet().cuda()
-else :
-  reseau = ImgTNet().cpu()
+#output = run_style_transfer(cnn,LossNet, style_image, content_image, input_image, num_steps= 150, step = 50, save = True)
 
-image = reseau(input_image)
-print(image.shape)
-tensorToPil(image)
+def Output(network):
+  if cuda :
+    reseau = network().cuda()
+  else :
+    reseau = network().cpu()
+
+  image = reseau(input_image)
+  print(image.shape)
+  tensorToPil(image)
+  imshow(network().forward(content_image))
+
+#Test method Johnson
+Output(ImgTNet)
+
+#Better version
+Output(ImgTNet_v2)
+
+
+
+
