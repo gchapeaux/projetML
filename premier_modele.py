@@ -27,11 +27,11 @@ def imshow(tensor, title=None):
     plt.imshow(tensorToPil(tensor))
     plt.pause(0.001)
 
-#content_layers_default = ['conv_4']
-#style_layers_default = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
+content_layers_default = ['conv_4']
+style_layers_default = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
 
 #plus lent mais mieux
-content_layers_default = ['conv_16']
+content_layers_default = ['conv_12']
 style_layers_default = ['conv_2', 'conv_4', 'conv_8', 'conv_12', 'conv_16']
 
 cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
@@ -223,4 +223,4 @@ content_image = image_loader(content_path)
 input_image = content_image.clone()
 
 cnn = models.vgg19(pretrained=True).features.to(device).eval()
-output = run_style_transfer(cnn,LossNet, style_image, content_image, input_image, num_steps= 500, step = 50, save = True)
+output = run_style_transfer(cnn,LossNet, style_image, content_image, input_image, num_steps= 1500, step = 50, save = True)

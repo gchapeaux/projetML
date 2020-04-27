@@ -52,6 +52,10 @@ def imshow(tensor, title=None):
 content_layers_default = ['conv_4']
 style_layers_default = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
 
+#plus lent mais mieux
+content_layers_default = ['conv_12']
+style_layers_default = ['conv_2', 'conv_4', 'conv_8', 'conv_12', 'conv_16']
+
 cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
 cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225]).to(device)
 
