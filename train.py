@@ -28,7 +28,7 @@ import copy
 from models import Residual
 from models import ImgTNet
 
-cuda = True
+cuda = torch.cuda.is_available()
 device = torch.device("cuda" if cuda else "cpu")
 
 unloader = transforms.ToPILImage()  # reconvert into PIL image
@@ -157,7 +157,8 @@ def checkimages():
             print(filename)
 def getimages():
     images = os.listdir('dataset')
-    images = images[:len(images)//2]
+    random.shuffle(images)
+    #images = images[:len(images)//10]
     return torch.cat([image_loader('dataset/'+filename) for filename in images if image_loader('dataset/'+filename).shape [1] == 3], 0)
 
 def get_cnn_vgg():
@@ -233,8 +234,8 @@ def image_loader(image_name):
 
 
 if __name__ == "__main__":
-    filename = "mini_trained3.pickl"
-    out_filename = "mini_trained4.pickl"
+    filename = "mini_trained6.pickl"
+    out_filename = "mini_trained7.pickl"
     style_path = "images/wave.jpeg"
 
     style_image = image_loader(style_path)
@@ -246,7 +247,7 @@ if __name__ == "__main__":
     reseau = pickle.load(open(filename,'rb')).to(device)
 
     d = time()
-    train_model(style_image, reseau, images, num_steps= 10, repeat = 1, save = True, lr = 10**-8)
+    train_model(style_image, reseau, images, num_steps= 20, repeat = 1, save = True, lr = 10**-8, batch_size = 2)
     print("temps total", time()-d)
 
 

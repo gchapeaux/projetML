@@ -14,7 +14,7 @@ import torchvision.models as models
 import torch.nn.functional as F
 import math
 import copy
-cuda = False
+cuda = torch.cuda.is_available()
 device = torch.device("cuda" if cuda else "cpu")
 
 unloader = transforms.ToPILImage()  # reconvert into PIL image
