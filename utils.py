@@ -6,3 +6,7 @@ def download_from_net(imgid):
     file = open(f'dataset/{imgid}.{extension}','wb')
     file.write(img.read())
     file.close()
+
+if __name__ == "__main__":
+    for imgid in range(1000):
+        download_from_net(imgid)
