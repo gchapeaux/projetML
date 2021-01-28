@@ -14,7 +14,11 @@ import torchvision.models as models
 import torch.nn.functional as F
 import math
 import copy
+<<<<<<< Updated upstream
 cuda = torch.cuda.is_available()
+=======
+cuda = False
+>>>>>>> Stashed changes
 device = torch.device("cuda" if cuda else "cpu")
 
 unloader = transforms.ToPILImage()  # reconvert into PIL image
@@ -519,11 +523,9 @@ def image_loader(image_name):
     return image.to(device, torch.float)
 
 content_path   = "images/danse.jpg"
-style_path = "images/wave.jpeg"
+style_path = "images/starry_night.jpg"
 
-#TODO : Uncomment
-imsize = 256 #Network test
-#imsize = 400 if torch.cuda.is_available() else 128  # use small size if no gpu
+imsize = 400 if torch.cuda.is_available() else 128  # use small size if no gpu
 
 loader = transforms.Compose([
     transforms.Resize((imsize, imsize)),  # scale imported image
@@ -532,6 +534,7 @@ loader = transforms.Compose([
 style_image = image_loader(style_path)
 content_image = image_loader(content_path)
 input_image = content_image.clone()
+<<<<<<< Updated upstream
 #TODO : Uncomment
 #cnn = models.vgg19(pretrained=True).features.to(device).eval()
 #output = run_style_transfer(cnn,LossNet, style_image, content_image, input_image, num_steps= 150, step = 50, save = True)
@@ -559,3 +562,8 @@ Output(Net_AdaIN)
 
 
 
+=======
+
+cnn = models.vgg19(pretrained=True).features.to(device).eval()
+output = run_style_transfer(cnn, style_image, content_image, input_image, num_steps= 500, step = 100, save = True)
+>>>>>>> Stashed changes
