@@ -209,10 +209,10 @@ def image_loader(image_name):
     image = loader(image).unsqueeze(0)
     return image.to(device, torch.float)
 
-content_path   = "images/danse.jpg"
-style_path = "images/wave.jpeg"
+content_path   = "images/skyline.png"
+style_path = "images/starry_night.jpg"
 
-imsize = 400 if torch.cuda.is_available() else 128  # use small size if no gpu
+imsize = 400 if torch.cuda.is_available() else 256  # use small size if no gpu
 
 loader = transforms.Compose([
     transforms.Resize((imsize, imsize)),  # scale imported image
@@ -223,4 +223,4 @@ content_image = image_loader(content_path)
 input_image = content_image.clone()
 
 cnn = models.vgg19(pretrained=True).features.to(device).eval()
-output = run_style_transfer(cnn,LossNet, style_image, content_image, input_image, num_steps= 1500, step = 50, save = True)
+output = run_style_transfer(cnn,LossNet, style_image, content_image, input_image, num_steps= 500, step = 100, save = True)
